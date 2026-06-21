@@ -7,8 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface AccountTransactionsRepository extends JpaRepository<AccountTransaction, Integer> {
+public interface AccountTransactionRepository extends JpaRepository<AccountTransaction, Integer> {
 
-    List<AccountTransaction> findByAccountId(Integer accountId);
+    List<AccountTransaction> findByAccountIdOrderByCreatedOnDesc(Integer accountId);
 
 }

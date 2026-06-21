@@ -8,9 +8,9 @@ import org.mapstruct.factory.Mappers;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
-public interface AccountTransactionsMapper {
+public interface AccountTransactionMapper {
 
-    AccountTransactionsMapper INSTANCE = Mappers.getMapper(AccountTransactionsMapper.class);
+    AccountTransactionMapper INSTANCE = Mappers.getMapper(AccountTransactionMapper.class);
 
     AccountTransactionDto toDto(AccountTransaction accountTransaction);
 

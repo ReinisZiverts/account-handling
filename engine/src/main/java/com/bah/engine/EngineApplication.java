@@ -6,29 +6,29 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @SpringBootApplication
 public class EngineApplication {
 
-    static void main(String[] args) {
+    public static void main(String[] args) {
         SpringApplication.run(EngineApplication.class, args);
     }
 
     @Bean
-    public CommandLineRunner demo(UserRepository repository) {
+    public CommandLineRunner demo(UserRepository repository, PasswordEncoder passwordEncoder) {
         return (_args) -> {
             if (repository.count() == 0) {
                 User user1 = new User();
                 user1.setUsername("user1");
-                user1.setPassword("password123");
+                user1.setPassword(passwordEncoder.encode("password123"));
+                user1.setRole("USER");
                 repository.save(user1);
                 User user2 = new User();
                 user2.setUsername("user2");
-                user2.setPassword("password123");
+                user2.setPassword(passwordEncoder.encode("password123"));
+                user2.setRole("USER");
                 repository.save(user2);
-                System.out.println("Initial data saved to H2 database.");
-            } else {
-                System.out.println("Database already contains data, skipping initialization.");
             }
         };
     }

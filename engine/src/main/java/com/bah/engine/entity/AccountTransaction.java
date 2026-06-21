@@ -21,14 +21,14 @@ public class AccountTransaction extends BaseEntity {
     @Column(name = "transaction_type", nullable = false)
     private TransactionType transactionType;
 
-    @Column(name = "amount", nullable = false)
+    @Column(name = "amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "currency", nullable = false)
     private Currency currency;
 
-    @Column(name = "balance_after", nullable = false)
+    @Column(name = "balance_after", nullable = false, precision = 19, scale = 4)
     private BigDecimal balanceAfter;
 
 }

@@ -7,11 +7,11 @@ public interface AccountService {
 
     AccountDto createAccount(CreateAccountRequest request);
 
-    AccountDto deposit(DepositRequestDto request);
+    AccountDto deposit(Integer accountId, DepositRequestDto request);
 
     AccountDto debit(Integer accountId, DebitRequestDto request);
 
-    AccountDto getBalance(Integer accountId);
+    BalanceResponseDto getBalance(Integer accountId);
 
     AccountDto exchange(Integer sourceAccountId, ExchangeRequest request);
 

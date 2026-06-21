@@ -16,7 +16,6 @@ public abstract class BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @JsonIgnore
     @Column(name = "created_on", updatable = false)
     private LocalDateTime createdOn;
 

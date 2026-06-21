@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @Table(name = "accounts")
 public class Account extends BaseEntity {
 
-    @Column(name = "balance", nullable = false)
+    @Column(name = "balance", nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
 
     @Column(name = "name", nullable = false)

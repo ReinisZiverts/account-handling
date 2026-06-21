@@ -1,17 +1,21 @@
 package com.bah.engine.service;
 
+import com.bah.engine.configuration.exception.AccountNotFoundException;
+import com.bah.engine.configuration.exception.CurrencyMismatchException;
+import com.bah.engine.configuration.exception.InsufficientBalanceException;
 import com.bah.engine.entity.Account;
 import com.bah.engine.entity.AccountTransaction;
 import com.bah.engine.entity.mapper.AccountMapper;
-import com.bah.engine.entity.mapper.AccountTransactionsMapper;
+import com.bah.engine.entity.mapper.AccountTransactionMapper;
 import com.bah.engine.enums.TransactionType;
 import com.bah.engine.helper.ExchangeHelper;
+import com.bah.engine.helper.UserHelper;
 import com.bah.engine.model.*;
 import com.bah.engine.repository.AccountRepository;
-import com.bah.engine.repository.AccountTransactionsRepository;
+import com.bah.engine.repository.AccountTransactionRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -21,14 +25,16 @@ import java.util.List;
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
-    private final AccountTransactionsRepository accountTransactionsRepository;
-    private final RestClient restClient = RestClient.create();
+    private final AccountTransactionRepository accountTransactionRepository;
+    private final UserHelper userHelper;
+    private final ExternalCallService externalCallService;
 
     @Override
+    @Transactional
     public AccountDto createAccount(CreateAccountRequest request) {
 
         Account account = new Account();
-        account.setUserId(request.getUserId());
+        account.setUserId(userHelper.getCurrentUser().getId());
         account.setName(request.getName());
         account.setCurrency(request.getCurrency());
 
@@ -37,10 +43,11 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public AccountDto deposit(DepositRequestDto request) {
-        Account account = accountRepository.findById(request.getAccountId()).orElseThrow();
+    @Transactional
+    public AccountDto deposit(Integer accountId, DepositRequestDto request) {
+        Account account = getAccount(accountId);
         if (account.getCurrency() != request.getCurrency()) {
-            throw new IllegalArgumentException("Currency mismatch");
+            throw new CurrencyMismatchException();
         }
         account.setBalance(account.getBalance().add(request.getAmount()));
         accountRepository.save(account);
@@ -49,16 +56,17 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional
     public AccountDto debit(Integer accountId, DebitRequestDto request) {
-        Account account = accountRepository.findById(accountId).orElseThrow();
+        Account account = getAccount(accountId);
         if (account.getCurrency() != request.getCurrency()) {
-            throw new IllegalArgumentException("Currency mismatch");
+            throw new CurrencyMismatchException();
         }
         if (account.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new IllegalArgumentException("Insufficient balance");
+            throw new InsufficientBalanceException();
         }
 
-        simulateExternalDebitLogging();
+        externalCallService.logDebit();
 
         account.setBalance(account.getBalance().subtract(request.getAmount()));
         accountRepository.save(account);
@@ -67,19 +75,16 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public AccountDto getBalance(Integer accountId) {
-        Account account = accountRepository.findById(accountId).orElseThrow();
-        return AccountMapper.INSTANCE.toDto(account);
+    public BalanceResponseDto getBalance(Integer accountId) {
+        Account account = getAccount(accountId);
+        return AccountMapper.INSTANCE.toBalanceResponseDto(account);
     }
 
     @Override
+    @Transactional
     public AccountDto exchange(Integer sourceAccountId, ExchangeRequest request) {
-        Account sourceAccount = accountRepository.findById(sourceAccountId).orElseThrow();
-        Account targetAccount = accountRepository.findById(request.getTargetAccountId()).orElseThrow();
-
-        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Invalid amount");
-        }
+        Account sourceAccount = getAccount(sourceAccountId);
+        Account targetAccount = getAccount(request.getTargetAccountId());
 
         if (sourceAccount.getId().equals(targetAccount.getId())) {
             throw new IllegalArgumentException("Source and target accounts cannot be the same");
@@ -90,7 +95,7 @@ public class AccountServiceImpl implements AccountService {
         }
 
         if (sourceAccount.getBalance().compareTo(request.getAmount()) < 0) {
-            throw new IllegalArgumentException("Insufficient balance");
+            throw new InsufficientBalanceException();
         }
 
         if (sourceAccount.getCurrency().equals(targetAccount.getCurrency())) {
@@ -119,12 +124,18 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public TransactionHistoryDto getTransactionHistory(Integer accountId) {
-        List<AccountTransaction> accountTransactionsList = accountTransactionsRepository.findByAccountId(accountId);
-        List<AccountTransactionDto> transactionHistoryDtoList = AccountTransactionsMapper.INSTANCE.toDtoList(accountTransactionsList);
+        Account account = getAccount(accountId);
+        List<AccountTransaction> accountTransactionsList = accountTransactionRepository.findByAccountIdOrderByCreatedOnDesc(account.getId());
+        List<AccountTransactionDto> transactionHistoryDtoList = AccountTransactionMapper.INSTANCE.toDtoList(accountTransactionsList);
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
-        transactionHistoryDto.setAccountName(accountRepository.findById(accountId).orElseThrow().getName());
+        transactionHistoryDto.setAccountName(account.getName());
         transactionHistoryDto.setAccountTransactionList(transactionHistoryDtoList);
         return transactionHistoryDto;
+    }
+
+    private Account getAccount(Integer accountId) {
+        return accountRepository.findByIdAndUserId(accountId, userHelper.getCurrentUser().getId())
+                .orElseThrow(AccountNotFoundException::new);
     }
 
     private void saveTransaction(
@@ -138,14 +149,7 @@ public class AccountServiceImpl implements AccountService {
         transaction.setAmount(amount);
         transaction.setCurrency(account.getCurrency());
         transaction.setBalanceAfter(account.getBalance());
-        accountTransactionsRepository.save(transaction);
+        accountTransactionRepository.save(transaction);
     }
 
-    private void simulateExternalDebitLogging() {
-        restClient
-                .get()
-                .uri("https://tools-httpstatus.pickup-services.com/200")
-                .retrieve()
-                .toBodilessEntity();
-    }
 }
