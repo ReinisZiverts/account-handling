@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/accounts")
 @RequiredArgsConstructor
@@ -18,6 +20,16 @@ public class AccountController {
     @PostMapping()
     public ResponseEntity<AccountDto> createAccount(@Valid @RequestBody CreateAccountRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(accountService.createAccount(request));
+    }
+
+    @GetMapping()
+    public ResponseEntity<List<AccountDto>> getAllUserAccounts() {
+        return ResponseEntity.ok(accountService.getAllUserAccounts());
+    }
+
+    @GetMapping("/{accountId}")
+    public ResponseEntity<AccountDto> getUserAccount(@PathVariable Integer accountId) {
+        return ResponseEntity.ok(accountService.getUserAccount(accountId));
     }
 
     @PostMapping("/{accountId}/deposit")
@@ -50,8 +62,20 @@ public class AccountController {
     }
 
     @GetMapping("/{accountId}/transactions")
-    public ResponseEntity<TransactionHistoryDto> getTransactionHistory(@PathVariable Integer accountId) {
-        return ResponseEntity.ok(accountService.getTransactionHistory(accountId));
+    public ResponseEntity<TransactionHistoryDto> getTransactionHistory(
+            @PathVariable Integer accountId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer size
+    ) {
+        return ResponseEntity.ok(accountService.getTransactionHistory(accountId, page, size));
+    }
+
+    @GetMapping("/{accountId}/transactions/{transactionId}")
+    public ResponseEntity<AccountTransactionDto> getTransactionHistory(
+            @PathVariable Integer accountId,
+            @PathVariable Integer transactionId
+    ) {
+        return ResponseEntity.ok(accountService.getTransactionInformation(accountId, transactionId));
     }
 
 }

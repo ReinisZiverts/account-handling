@@ -15,6 +15,9 @@ import com.bah.engine.repository.AccountRepository;
 import com.bah.engine.repository.AccountTransactionRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -39,6 +42,18 @@ public class AccountServiceImpl implements AccountService {
         account.setCurrency(request.getCurrency());
 
         accountRepository.save(account);
+        return AccountMapper.INSTANCE.toDto(account);
+    }
+
+    @Override
+    public List<AccountDto> getAllUserAccounts() {
+        List<Account> allUserAccounts = accountRepository.findByUserId(userHelper.getCurrentUser().getId());
+        return AccountMapper.INSTANCE.toDtoList(allUserAccounts);
+    }
+
+    @Override
+    public AccountDto getUserAccount(Integer accountId) {
+        Account account = getAccount(accountId);
         return AccountMapper.INSTANCE.toDto(account);
     }
 
@@ -123,14 +138,22 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public TransactionHistoryDto getTransactionHistory(Integer accountId) {
+    public TransactionHistoryDto getTransactionHistory(Integer accountId, Integer page, Integer size) {
         Account account = getAccount(accountId);
-        List<AccountTransaction> accountTransactionsList = accountTransactionRepository.findByAccountIdOrderByCreatedOnDesc(account.getId());
-        List<AccountTransactionDto> transactionHistoryDtoList = AccountTransactionMapper.INSTANCE.toDtoList(accountTransactionsList);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AccountTransaction> accountTransactionsList = accountTransactionRepository.findByAccountIdOrderByCreatedOnDesc(account.getId(), pageable);
+        List<AccountTransactionDto> transactionHistoryDtoList = AccountTransactionMapper.INSTANCE.toDtoList(accountTransactionsList.getContent());
         TransactionHistoryDto transactionHistoryDto = new TransactionHistoryDto();
         transactionHistoryDto.setAccountName(account.getName());
         transactionHistoryDto.setAccountTransactionList(transactionHistoryDtoList);
         return transactionHistoryDto;
+    }
+
+    @Override
+    public AccountTransactionDto getTransactionInformation(Integer accountId, Integer transactionId) {
+        Account account = getAccount(accountId);
+        AccountTransaction accountTransaction = accountTransactionRepository.findByAccountIdAndId(account.getId(), transactionId);
+        return AccountTransactionMapper.INSTANCE.toDto(accountTransaction);
     }
 
     private Account getAccount(Integer accountId) {

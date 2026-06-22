@@ -1,5 +1,6 @@
 package com.bah.engine.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.List;
 public class TransactionHistoryDto {
 
     private String accountName;
+    @JsonProperty("accountTransactions")
     List<AccountTransactionDto> accountTransactionList;
 
 }
